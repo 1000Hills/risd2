@@ -1,0 +1,19 @@
+
+C:\laragon\www\risd2
+λ subl
+'subl' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\laragon\www\risd2
+λ PATH=%PATH%;C:\Program Files\Sublime Text 3\
+
+C:\laragon\www\risd2
+λ subl .
+
+C:\laragon\www\risd2
+λ php artisan key:generate
+Application key [base64:gbxDhaUg412PKLyQOrYgCb4oUPJvef6ORzpPb0gFVNk=] set successfully.
+
+C:\laragon\www\risd2
+λ
+
