@@ -24,7 +24,7 @@
 			$this->button_show = true;
 			$this->button_filter = true;
 			$this->button_import = false;
-			$this->button_export = false;
+			$this->button_export = true;
 			$this->table = "community_focal_person";
 			# END CONFIGURATION DO NOT REMOVE THIS LINE
 
@@ -71,6 +71,12 @@
 			$this->form[] = ['label'=>'Conclusion','name'=>'conclusion','type'=>'text','validation'=>'required|min:1|max:255','width'=>'col-sm-10'];
 			# END FORM DO NOT REMOVE THIS LINE
 
+			// Show subform
+			$commentCols = [];
+			$commentCols[] = ['label'=>'Comment','name'=>'comment','type'=>'textarea','width'=>'col-sm-10'];
+			$this->form[] = ['label'=>'Comment','type'=>'child','name' => 'community_focal_person_comments',
+							'columns'=>$commentCols,'table'=>'community_focal_person_comments',
+							'foreign_key'=>'community_focal_person_id'];
 			# OLD START FORM
 			//$this->form = [];
 			//$this->form[] = ["label"=>"Msisdn","name"=>"msisdn","type"=>"text","required"=>TRUE,"validation"=>"required|min:1|max:255"];
@@ -278,7 +284,7 @@
 	        
 	        
 	    }
-
+	    
 
 	    /*
 	    | ---------------------------------------------------------------------- 

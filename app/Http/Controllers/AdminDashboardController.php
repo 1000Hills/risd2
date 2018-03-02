@@ -5,14 +5,14 @@
 	use DB;
 	use CRUDBooster;
 
-	class AdminAbunziController extends \crocodicstudio\crudbooster\controllers\CBController {
+	class AdminDashboardController extends \crocodicstudio\crudbooster\controllers\CBController {
 
 	    public function cbInit() {
 
 			# START CONFIGURATION DO NOT REMOVE THIS LINE
 			$this->title_field = "id";
 			$this->limit = "20";
-			$this->orderby = "requestdate,desc";
+			$this->orderby = "id,desc";
 			$this->global_privilege = false;
 			$this->button_table_action = true;
 			$this->button_bulk_action = true;
@@ -24,7 +24,7 @@
 			$this->button_show = true;
 			$this->button_filter = true;
 			$this->button_import = false;
-			$this->button_export = true;
+			$this->button_export = false;
 			$this->table = "abunzi";
 			# END CONFIGURATION DO NOT REMOVE THIS LINE
 
@@ -73,14 +73,8 @@
 			$this->form[] = ['label'=>'Number Of Cases Mediated With Partial Consensus','name'=>'number_of_cases_mediated_with_partial_consensus','type'=>'text','validation'=>'required|min:1|max:255','width'=>'col-sm-10'];
 			$this->form[] = ['label'=>'Number Of Cases Mediated Without Consensus Among Disputants','name'=>'number_of_cases_mediated_without_consensus_among_disputants','type'=>'text','validation'=>'required|min:1|max:255','width'=>'col-sm-10'];
 			$this->form[] = ['label'=>'Conclusion','name'=>'conclusion','type'=>'text','validation'=>'required|min:1|max:255','width'=>'col-sm-10'];
-			
 			# END FORM DO NOT REMOVE THIS LINE
-			// Show subform
-			$commentCols = [];
-			$commentCols[] = ['label'=>'Comment','name'=>'comment','type'=>'textarea','width'=>'col-sm-10'];
-			$this->form[] = ['label'=>'Comment','type'=>'child','name' => 'abunzi_comments',
-							'columns'=>$commentCols,'table'=>'abunzi_comments',
-							'foreign_key'=>'abunzi_id'];
+
 			# OLD START FORM
 			//$this->form = [];
 			//$this->form[] = ["label"=>"Msisdn","name"=>"msisdn","type"=>"text","required"=>TRUE,"validation"=>"required|min:1|max:255"];
@@ -203,10 +197,7 @@
 	        |
 	        */
 	        $this->index_statistic = array();
-			$this->index_statistic[] = ['label'=>'Received Issues','count'=>DB::table('abunzi')->sum('total_number_of_received_issues'),'icon'=>'fa fa-check','color'=>'green'];
-			$this->index_statistic[] = ['label'=>'Female Issues','count'=>DB::table('abunzi')->sum('number_of_received_issues_from_female'),'icon'=>'fa fa-check','color'=>'red'];
-			$this->index_statistic[] = ['label'=>'Male issues','count'=>DB::table('abunzi')->sum('number_of_received_issues_from_male'),'icon'=>'fa fa-check','color'=>'blue'];
-			//$this->index_statistic[] = ['label'=>'Heritage','count'=>DB::table('abunzi')->sum('number_of_issues_related_to_heritage'),'icon'=>'fa fa-check','color'=>'blue'];
+
 
 
 	        /*
@@ -281,8 +272,382 @@
 	        
 	    }
 
+	    /**
+	     * Dashboard controller
+	     * @return [type] [description]
+	     */
+        public function getIndex() {
+        	// Only allow logged in users
+        	if(empty(CRUDBooster::myId())){
+        		return redirect()->to('admin/login');
+        	}
 
-	    /*
+        	$privilege = strtolower(CRUDBooster::myPrivilegeName());
+
+        	$data      = [];
+
+        	// If police then show plice data
+        	if (strpos($privilege,'police') !== FALSE  || strpos($privilege,'super administrator') !== FALSE) {
+             	$data['police_charts'] = view('community_policing_charts')->render();
+        	}
+
+        	// Focal person
+        	if (strpos($privilege, 'focal') !== FALSE || strpos($privilege,'super administrator') !== FALSE ) {
+	         	$data['focal_person_charts'] = view('community_focal_person_charts')->render();
+        	}
+
+        	// Focal person
+        	if (strpos($privilege, 'abunzi') !== FALSE || strpos($privilege,'super administrator') !== FALSE) {
+	         	$data['abunzi_charts'] = view('abunzi_charts')->render();
+        	}
+
+        	// Focal person
+        	if (strpos($privilege, 'abunziland') !== FALSE || strpos($privilege,'super administrator') !== FALSE) {
+	         	$data['abunzi_land_charts'] = view('abunzi_land_charts')->render();
+        	}
+
+         	return $this->cbView('dashboard_charts',$data);
+		} 
+     	
+     ///////////////////
+     // POLICE CHARTS //
+     ///////////////////
+      /**
+       * Filter police based on who logged in 
+       * @param   $query 
+       * @return  
+       */
+      private function filterPolice($query){
+      	     
+      	    // nanatize, remove any space and make it lower 
+      	    $privilege = str_replace(' ', '', CRUDBooster::myPrivilegeName());
+      	    $privilege = strtolower($privilege);
+
+	        //Your code here
+	        switch ($privilege) {
+	        	case 'policedistrict':
+	        		$query->where('district',CRUDBooster::me()->district);
+	        		break;
+	        	case 'policeland':
+	        		$query->where('type_of_issue','ubutaka');
+	        		break;    
+	        }
+
+	        return $query;
+      }
+		 /**
+	     * Display a the chart for projects.
+	     * GET /dashboard/policing/typeofissues
+	     *
+	     * @return Response
+	     */
+	     
+	    public function policetypeOfIssueChartData()
+	    {
+	        $query = DB::table('community_policing')
+	                ->select( 
+	                		 DB::raw("type_of_issue as label"),
+	                	     DB::raw("concat('#',SUBSTRING((lpad(hex(round(rand() * 10000000)),6,0)),-6)) as color"),
+	                		 DB::raw('count(1) as value')
+	                		);
+	                
+	         return $this->filterPolice($query)->groupBy(['type_of_issue'])
+	                ->get();
+	    }
+		 /**
+	     * Display a the chart for projects.
+	     * GET /dashboard/policing/typeofissues
+	     *
+	     * @return Response
+	     */
+	     
+	    public function policegenderOfVictimChartData()
+	    {
+	        $query = DB::table('community_policing')
+	                ->select(
+			                 DB::raw("REPLACE(LEFT(requestdate,7),'-','') as month"),
+	                		 DB::raw("gender_of_victim as label"),
+	                	     DB::raw("concat('#',SUBSTRING((lpad(hex(round(rand() * 10000000)),6,0)),-6)) as color"),
+	                		 DB::raw('count(1) as value')
+	                		);
+	                
+	         return $this->filterPolice($query)->groupBy(['gender_of_victim',DB::raw("REPLACE(LEFT(requestdate,7),'-','')")])
+	                ->get();
+	    }
+
+		 /**
+	     * Display a the chart for projects.
+	     * GET /dashboard/policing/typeofissues
+	     *
+	     * @return Response
+	     */
+	     
+	    public function policesectorOfIssueChartData()
+	    {
+	        $query = DB::table('community_policing')
+	                ->select(DB::raw("REPLACE(LEFT(requestdate,7),'-','') as month"),
+	                		 DB::raw("province as label"),
+	                	     DB::raw("concat('#',SUBSTRING((lpad(hex(round(rand() * 10000000)),6,0)),-6)) as color"),
+	                		 DB::raw('count(distinct sector) as value')
+	                		);
+	                
+	         return $this->filterPolice($query)->groupBy(['province',DB::raw("REPLACE(LEFT(requestdate,7),'-','')")])
+	                ->get();
+	    }
+
+		 /**
+	     * Display a the chart for projects.
+	     * GET /dashboard/policing/typeofissues
+	     *
+	     * @return Response
+	     */
+	     
+	    public function policelandTypeIssueChartData()
+	    {
+	        $query = DB::table('community_policing')
+	                ->select(DB::raw("REPLACE(LEFT(requestdate,7),'-','') as month"),
+	                		 DB::raw('count(distinct sector) as value')
+	                		);
+	         return $this->filterPolice($query)->groupBy([DB::raw("REPLACE(LEFT(requestdate,7),'-','')")])
+	                ->get();
+	    }
+
+	    //////////////////////////////////
+	    // --- END OF POLICE CHART ---- //
+	    //////////////////////////////////
+
+	    ////////////////////////////////
+	    // ==== START OF FOCAL PERSON //
+	    ////////////////////////////////
+	    
+	     
+	    public function focalgenderOfComplainantsChartData()
+	    {
+	        return  DB::table('community_focal_person')
+	                ->select(
+			                 DB::raw("REPLACE(LEFT(requestdate,7),'-','') as month"),
+	                		 DB::raw("gender as label"),
+	                	     DB::raw("concat('#',SUBSTRING((lpad(hex(round(rand() * 10000000)),6,0)),-6)) as color"),
+	                		 DB::raw('count(1) as value')
+	                		)
+	                ->groupBy(['gender',DB::raw("REPLACE(LEFT(requestdate,7),'-','')")])
+	                ->get();
+	    }
+
+	    /**
+	     * Status of the issue
+	     * @return  json
+	     */
+	    public function statusOfTheIssueChartData()
+	    {
+	        return DB::table('community_focal_person')
+	                ->select( 
+	                		 DB::raw("status_of_the_issue as label"),
+	                	     DB::raw("concat('#',SUBSTRING((lpad(hex(round(rand() * 10000000)),6,0)),-6)) as color"),
+	                		 DB::raw('count(1) as value')
+	                		)
+	                ->groupBy(['status_of_the_issue'])
+	                ->get();
+	    }
+
+	    /**
+	     * Land has all required documents
+	     * @return  
+	     */
+	    public function landHasAllRequiredDocumentChartData()
+	    {
+	    	
+	        $query = DB::table('community_focal_person')
+	                ->select(DB::raw("REPLACE(LEFT(requestdate,7),'-','') as month"),
+	                		 DB::raw("land_has_required_documents as label"),
+	                	     DB::raw("concat('#',SUBSTRING((lpad(hex(round(rand() * 10000000)),6,0)),-6)) as color"),
+	                		 DB::raw('count(1) as value')
+	                		);
+	                
+	         return $this->filterPolice($query)->groupBy(['land_has_required_documents',DB::raw("REPLACE(LEFT(requestdate,7),'-','')")])
+	                ->get();
+	    }
+
+	    /**
+	     * Land related issues
+	     * @return  
+	     */
+	    public function landRelatedIssueChartData()
+	    {
+	        return  DB::table('community_focal_person')
+	                ->select(DB::raw("REPLACE(LEFT(requestdate,7),'-','') as month"),
+	                		 DB::raw('count(1) as value')
+	                		)
+	                ->where('is_it_a_land_related_issue','yes')
+	                ->groupBy([DB::raw("REPLACE(LEFT(requestdate,7),'-','')")])
+	                ->get();
+	    }
+
+	    /////////////////////////////
+	    // -- END OF FOCAL PERSON  //
+	    /////////////////////////////
+
+
+	    ////////////////////////////
+	    // -- START OF THE ABUNZI //
+	    ////////////////////////////
+	    
+	    /**
+	     * Filter for abunzi
+	     * @param string $value 
+	     */
+	    public function filterAbunzi($query)
+	    {
+      	    // sanatize, remove any space and make it lower 
+      	    $privilege = str_replace(' ', '', CRUDBooster::myPrivilegeName());
+      	    $privilege = strtolower($privilege);
+      	    
+	        //Your code here
+	        switch ($privilege) {
+	        	case 'abunzidistrict':
+	        		$query->where('district',CRUDBooster::me()->district);
+	        	break;
+	        }
+
+	        return  $query;
+
+	    }
+
+	    /**
+	     * Get committee types
+	     * @return json
+	     */
+	    public function committeetypesChartData()
+	    {
+	        $query = DB::table('abunzi')
+	                ->select(
+			                 DB::raw("REPLACE(LEFT(requestdate,7),'-','') as month"),
+	                		 DB::raw("committee_type as label"),
+	                	     DB::raw("concat('#',SUBSTRING((lpad(hex(round(rand() * 10000000)),6,0)),-6)) as color"),
+	                		 DB::raw('count(1) as value')
+	                		);
+	                
+	         return $this->filterAbunzi($query)->groupBy(['committee_type',DB::raw("REPLACE(LEFT(requestdate,7),'-','')")])
+	                ->get();
+	    }
+
+	    /**
+	     * 
+	     * @return  json
+	     */
+	    public function disputePerDistrictChartData()
+	    {
+	        $query = DB::table('abunzi')
+	                ->select( 
+	                		 DB::raw("district as label"),
+	                	     DB::raw("concat('#',SUBSTRING((lpad(hex(round(rand() * 10000000)),6,0)),-6)) as color"),
+	                		 DB::raw("SUM(total_number_of_received_issues) as value")
+	                		);
+	                
+	         return $this->filterAbunzi($query)->groupBy(['district'])
+	                ->get();
+	    }
+
+	    /**
+	     * Get information for male vs female
+	     * @return  json
+	     */
+	    public function maleVsFemaleCasesChartData()
+	    {
+	        $query = DB::table('abunzi')
+	                ->select( 
+	                		 DB::raw("REPLACE(LEFT(requestdate,7),'-','') As month"),
+	                		 DB::raw("SUM(number_of_received_issues_from_male) AS male"),
+	                		 DB::raw(" SUM(number_of_received_issues_from_female) AS female")
+	                		);
+	         return $this->filterAbunzi($query)->groupBy([DB::raw("REPLACE(LEFT(requestdate,7),'-','')")])
+	                ->get();
+	    }
+
+	    	    /**
+	     * Get information for male vs female
+	     * @return  json
+	     */
+	    public function receivedIssuePerMonthChartData()
+	    {
+	        $query = DB::table('abunzi')
+	                ->select( 
+	                		 DB::raw("REPLACE(LEFT(requestdate,7),'-','') As month"),
+	                		 DB::raw("SUM(total_number_of_received_issues) AS received_issues")
+	                		);
+	         return $this->filterAbunzi($query)->groupBy([DB::raw("REPLACE(LEFT(requestdate,7),'-','')")])
+	                ->get();
+	    }
+
+	    /**
+	     * Get information for male vs female
+	     * @return  json
+	     */
+	    public function landTypesofIssuesChartData()
+	    {
+	        $query = DB::table('abunzi')
+	                ->select( 
+	                		 DB::raw("district As district"),
+	                		 DB::raw("SUM(number_of_issues_related_to_land) AS inheritance"),
+	                		 DB::raw("SUM(number_of_issues_related_to_border) AS boundaries"),
+	                		 DB::raw("SUM(number_of_issues_related_to_land_gift) AS donation"),
+	                		 DB::raw("SUM(number_of_family_related_land_issues) AS family"),
+	                		 DB::raw("SUM(number_of_land_disputes_related_to_land_renting) AS rent"),
+	                		 DB::raw("SUM(number_of_land_disputes_related_to_breach_of_contact) AS contract")
+	                		);
+
+	         return $this->filterAbunzi($query)->groupBy(['district'])
+	     ->get();
+	    }
+
+/**
+	     * Get information for male vs female
+	     * @return  json
+	     */
+	    public function notLandTypesofIssuesChartData()
+	    {
+	        $query = DB::table('abunzi')
+	                ->select( 
+	                		 DB::raw("district As district"),
+	                		 DB::raw("SUM(number_of_issues_related_to_heritage) AS inheritance"),
+	                		 DB::raw("SUM(number_of_issues_related_to_other_gift) AS donation"),
+	                		 DB::raw("SUM(number_of_other_family_related_issues) AS family"),
+	                		 DB::raw("SUM(number_of_issues_related_to_renting) AS rent"),
+	                		 DB::raw("SUM(number_of_other_disputes_related_to_breach_of_contract) AS contract")
+	                		);
+
+	         return $this->filterAbunzi($query)->groupBy(['district'])
+	     ->get();
+	    }
+
+
+	     /**
+	     * 
+	     * @return  json
+	     */
+	                 
+	                 public function mediationPerformanceChartData()
+	    {
+	        $query = DB::table('abunzi')
+	                ->select( 
+	                		 DB::raw("committee_type As district"),
+	                		 DB::raw("SUM(number_of_cases_mediated_with_consensus_of_disputant) as consensus"),
+	                		 DB::raw("SUM(number_of_cases_mediated_with_partial_consensus) as partial"),
+	                		 DB::raw("SUM(number_of_cases_mediated_without_consensus_among_disputants) as no_consensus")
+	                		);
+
+	         return $this->filterAbunzi($query)->groupBy(['committee_type'])
+	     ->get();
+	    }
+	    
+
+
+
+	    /////////////////////////////
+	    // -- END OF ABUNZI CHARTS //
+	    /////////////////////////////
+
+	   /*
 	    | ---------------------------------------------------------------------- 
 	    | Hook for button selected
 	    | ---------------------------------------------------------------------- 
@@ -304,24 +669,8 @@
 	    |
 	    */
 	    public function hook_query_index(&$query) {
-      	    // sanatize, remove any space and make it lower 
-      	    $privilege = str_replace(' ', '', CRUDBooster::myPrivilegeName());
-      	    $privilege = strtolower($privilege);
-      	    
 	        //Your code here
-	        switch ($privilege) {
-	        	case 'abunzidistrict':
-	        		$query->where('district',CRUDBooster::me()->district);
-	              $this->index_statistic[] = ['label'=>'Received Issues','count'=>DB::table('abunzi')->sum('total_number_of_received_issues'),'icon'=>'fa fa-check','color'=>'green'];
-			      $this->index_statistic[] = ['label'=>'Female Issues','count'=>DB::table('abunzi')->sum('number_of_received_issues_from_female'),'icon'=>'fa fa-check','color'=>'red'];
-			      $this->index_statistic[] = ['label'=>'Male issues','count'=>DB::table('abunzi')->sum('number_of_received_issues_from_male'),'icon'=>'fa fa-check','color'=>'blue'];
-			      //$this->index_statistic[] = ['label'=>'Heritage','count'=>$query->sum('number_of_issues_related_to_heritage'),'icon'=>'fa fa-check','color'=>'blue'];
-	        		break;
-	        	default:
-	        		# code...
-	        		break;
-	        }
-
+	            
 	    }
 
 	    /*

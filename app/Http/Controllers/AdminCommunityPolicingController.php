@@ -12,7 +12,7 @@
 			# START CONFIGURATION DO NOT REMOVE THIS LINE
 			$this->title_field = "id";
 			$this->limit = "20";
-			$this->orderby = "msisdn,desc";
+			$this->orderby = "requestdate,desc";
 			$this->global_privilege = false;
 			$this->button_table_action = true;
 			$this->button_bulk_action = true;
@@ -24,19 +24,20 @@
 			$this->button_show = true;
 			$this->button_filter = true;
 			$this->button_import = false;
-			$this->button_export = false;
+			$this->button_export = true;
 			$this->table = "community_policing";
 			# END CONFIGURATION DO NOT REMOVE THIS LINE
 
 			# START COLUMNS DO NOT REMOVE THIS LINE
 			$this->col = [];
-			$this->col[] = ["label"=>"Msisdn","name"=>"msisdn"];
-			$this->col[] = ["label"=>"Requestdate","name"=>"requestdate"];
-			$this->col[] = ["label"=>"Registered Code","name"=>"registered_code"];
-			$this->col[] = ["label"=>"Type Of Issue","name"=>"type_of_issue"];
-			$this->col[] = ["label"=>"Land Type Of Issue","name"=>"land_type_of_issue"];
 			$this->col[] = ["label"=>"Victim","name"=>"victim"];
-			$this->col[] = ["label"=>"Sector Where The Issue Is","name"=>"sector_where_the_issue_is"];
+			$this->col[] = ["label"=>"Suspect","name"=>"suspect"];
+			$this->col[] = ["label"=>"Type Of Issue","name"=>"type_of_issue"];
+			$this->col[] = ["label"=>"District","name"=>"district"];
+			$this->col[] = ["label"=>"Sector","name"=>"sector"];
+			$this->col[] = ["label"=>"Cell","name"=>"cell"];
+			$this->col[] = ["label"=>"Village","name"=>"village"];
+						
 			# END COLUMNS DO NOT REMOVE THIS LINE
 
 			# START FORM DO NOT REMOVE THIS LINE
@@ -62,6 +63,13 @@
 			$this->form[] = ['label'=>'Short Description Of The Issue','name'=>'short_description_of_the_issue','type'=>'text','validation'=>'required|min:1|max:255','width'=>'col-sm-10'];
 			$this->form[] = ['label'=>'Conclusion','name'=>'conclusion','type'=>'text','validation'=>'required|min:1|max:255','width'=>'col-sm-10'];
 			# END FORM DO NOT REMOVE THIS LINE
+
+			// Show subform
+			$commentCols = [];
+			$commentCols[] = ['label'=>'Comment','name'=>'comment','type'=>'textarea','width'=>'col-sm-10'];
+			$this->form[] = ['label'=>'Comment','type'=>'child','name' => 'community_policing_comments',
+							'columns'=>$commentCols,'table'=>'community_policing_comments',
+							'foreign_key'=>'community_policing_id'];
 
 			# OLD START FORM
 			//$this->form = [];
@@ -173,8 +181,8 @@
 	        |
 	        */
 	        $this->index_statistic = array();
-			$this->index_statistic[] = ['label'=>'Suspect','count'=>DB::table('community_policing')->distinct('suspect')->count('suspect'),'icon'=>'fa fa-check','color'=>'green'];
-			$this->index_statistic[] = ['label'=>'Victim','count'=>DB::table('community_policing')->distinct('victim')->count('victim'),'icon'=>'fa fa-check','color'=>'red'];
+			$this->index_statistic[] = ['label'=>'Male Victims','count'=>DB::table('community_policing')->distinct('suspect')->count('suspect'),'icon'=>'fa fa-check','color'=>'green'];
+			$this->index_statistic[] = ['label'=>'Female Victims','count'=>DB::table('community_policing')->distinct('victim')->count('victim'),'icon'=>'fa fa-check','color'=>'red'];
 			$this->index_statistic[] = ['label'=>'Sector with issues','count'=>DB::table('community_policing')->distinct('sector_where_the_issue_is')->count('sector_where_the_issue_is'),'icon'=>'fa fa-check','color'=>'yellow'];
 			$this->index_statistic[] = ['label'=>'Conclusions','count'=>DB::table('community_policing')->distinct('conclusion')->count('conclusion'),'icon'=>'fa fa-check','color'=>'blue'];
 
@@ -274,13 +282,18 @@
 	    |
 	    */
 	    public function hook_query_index(&$query) {
+
+	    	      	    // sanatize, remove any space and make it lower 
+      	    $privilege = str_replace(' ', '', CRUDBooster::myPrivilegeName());
+      	    $privilege = strtolower($privilege);
 	        //Your code here
-	        switch (CRUDBooster::myPrivilegeName()) {
-	        	case 'Police District':
+	        switch ($privilege) {
+	        	case 'policedistrict':
 	        		$query->where('district',CRUDBooster::me()->district);
 	        		break;
-	        	case 'Police Land':
-	        		$query->where('type_of_issue','ubutaka');	        	     
+	        	case 'policeland':
+	        		$query->where('type_of_issue','ubutaka');
+	        		break;        	     
 	        	default:
 	        		# code...
 	        		break;
